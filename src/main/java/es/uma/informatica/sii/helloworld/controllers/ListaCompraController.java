@@ -6,9 +6,10 @@ import java.util.Optional;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.MatrixVariable;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -24,6 +26,11 @@ import es.uma.informatica.sii.helloworld.dto.ListaCompraDTO;
 import es.uma.informatica.sii.helloworld.entities.Item;
 import es.uma.informatica.sii.helloworld.entities.ListaCompra;
 import es.uma.informatica.sii.helloworld.service.ListaCompraDBService;
+import es.uma.informatica.sii.helloworld.service.NoEncontradoException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @RestController
 @RequestMapping(path = "/listas")
@@ -47,10 +54,24 @@ public class ListaCompraController {
 	
 	
 	@PostMapping
-	public ResponseEntity aniadeLista(@RequestBody ListaCompraDTO nuevaLista, UriComponentsBuilder builder) {
+	@Operation(description = "Crea una nueva lista de la compra", 
+		responses = {
+				@ApiResponse(responseCode = "201",
+						description = "Created",
+						headers= {
+								@Header(name = "location", 
+										description="URI de la nueva lista",
+										schema = @Schema(type = "string",
+													format="uri"
+												))})})
+	public ResponseEntity<?> aniadeLista(@RequestBody ListaCompraDTO nuevaLista, UriComponentsBuilder builder) {
 		ListaCompra lc = modelMapper.map(nuevaLista, ListaCompra.class);
+		lc.setId(null);
 		Long id = service.aniadirListaCompra(lc);
-		URI uri = builder.path(LISTA_COMPRA_PATH).path(String.format("/%d", id)).build().toUri();
+		URI uri = builder.path(LISTA_COMPRA_PATH)
+						.path(String.format("/%d", id))
+						.build()
+						.toUri();
 		return ResponseEntity.created(uri).build();
 	}
 	
@@ -62,7 +83,7 @@ public class ListaCompraController {
 	}
 	
 	@PutMapping("{id}")
-	public ResponseEntity modificaLista(@PathVariable(name = "id") Long id, @RequestBody ListaCompraDTO lista) {		
+	public ResponseEntity<?> modificaLista(@PathVariable(name = "id") Long id, @RequestBody ListaCompraDTO lista) {		
 		ListaCompra lc = modelMapper.map(lista, ListaCompra.class);
 		if (service.listaCompraById(id).isPresent()) {
 			lc.setId(id);
@@ -73,7 +94,7 @@ public class ListaCompraController {
 	}
 	
 	@DeleteMapping("{id}")
-	public ResponseEntity eliminarLista(@PathVariable(name = "id") Long id) {
+	public ResponseEntity<?> eliminarLista(@PathVariable(name = "id") Long id) {
 		if (service.listaCompraById(id).isPresent()) {
 			service.eliminarListaCompra(id);
 			return ResponseEntity.ok().build();
@@ -82,7 +103,7 @@ public class ListaCompraController {
 	}
 	
 	@PostMapping("{id}")
-	public ResponseEntity aniadeItem(@PathVariable(name="id") Long idLista, @RequestBody ItemDTO item, UriComponentsBuilder uriBuilder) {
+	public ResponseEntity<?> aniadeItem(@PathVariable(name="id") Long idLista, @RequestBody ItemDTO item, UriComponentsBuilder uriBuilder) {
 		Item itemEntity = modelMapper.map(item, Item.class);
 		itemEntity.setId(null);
 		Long idItem = service.aniadirItem(idLista, itemEntity);
@@ -102,15 +123,9 @@ public class ListaCompraController {
 		return ResponseEntity.of(item);
 	}
 	
-	@GetMapping("item/{item}")
-	public ResponseEntity<ItemDTO> obtenerItemMatrix(@MatrixVariable Long idLista, @MatrixVariable(name="idItem") Long idItem) {
-		Optional<ItemDTO> item = service.getItem(idLista, idItem)
-				.map(it->modelMapper.map(it, ItemDTO.class));
-		return ResponseEntity.of(item);
-	}
 	
 	@PutMapping("{idLista}/item/{idItem}")
-	public ResponseEntity modificarItem(@PathVariable(name="idLista") Long idLista, @PathVariable(name="idItem") Long idItem, @RequestBody ItemDTO item) {
+	public ResponseEntity<?> modificarItem(@PathVariable(name="idLista") Long idLista, @PathVariable(name="idItem") Long idItem, @RequestBody ItemDTO item) {
 		if (service.getItem(idLista, idItem).isPresent()) {
 			Item itemEntity = modelMapper.map(item, Item.class);
 			itemEntity.setId(idItem);
@@ -122,9 +137,15 @@ public class ListaCompraController {
 	}
 	
 	@DeleteMapping("{idLista}/item/{idItem}")
-	public ResponseEntity eliminarItem(@PathVariable(name="idLista") Long idLista, @PathVariable(name="idItem") Long idItem) {
+	public ResponseEntity<?> eliminarItem(@PathVariable(name="idLista") Long idLista, @PathVariable(name="idItem") Long idItem) {
 		service.eliminarItem(idLista, idItem);
 		return ResponseEntity.ok().build();
+	}
+	
+	@ExceptionHandler(NoEncontradoException.class)
+	@ResponseStatus(code = HttpStatus.NOT_FOUND)
+	public void noEncontrado() {
+		
 	}
 
 }
