@@ -35,14 +35,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController
 @RequestMapping(path = "/listas")
 public class ListaCompraController {
-	private ListaCompraDBService service;
-	@GetMapping
-	public List<Long> obtieneListas() {
-		return service.todasListascompras();
-	}
-	
 	public static final String LISTA_COMPRA_PATH="/listas"; 
 	public static final String ITEM_PATH="/item";
+	
+	private ListaCompraDBService service;
 	private ModelMapper modelMapper;
 	
 	@Autowired
@@ -51,24 +47,17 @@ public class ListaCompraController {
 		this.modelMapper = modelMapper;
 	}
 	
-	
+	@GetMapping
+	public List<Long> obtieneListas() {
+		return service.todasListascompras();
+	}
 	
 	@PostMapping
-	@Operation(description = "Crea una nueva lista de la compra", 
-		responses = {
-				@ApiResponse(responseCode = "201",
-						description = "Created",
-						headers= {
-								@Header(name = "location", 
-										description="URI de la nueva lista",
-										schema = @Schema(type = "string",
-													format="uri"
-												))})})
 	public ResponseEntity<?> aniadeLista(@RequestBody ListaCompraDTO nuevaLista, UriComponentsBuilder builder) {
 		ListaCompra lc = modelMapper.map(nuevaLista, ListaCompra.class);
 		lc.setId(null);
 		Long id = service.aniadirListaCompra(lc);
-		URI uri = builder.path(LISTA_COMPRA_PATH)
+		URI uri = builder.path("/listas")
 						.path(String.format("/%d", id))
 						.build()
 						.toUri();
