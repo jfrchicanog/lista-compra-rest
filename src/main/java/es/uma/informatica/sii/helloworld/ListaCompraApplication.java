@@ -11,10 +11,4 @@ public class ListaCompraApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ListaCompraApplication.class, args);
 	}
-	
-	@Bean
-	public ModelMapper modelMapper() {
-		return new ModelMapper();
-	}
-
 }

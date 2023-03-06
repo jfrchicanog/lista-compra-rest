@@ -13,8 +13,6 @@ import es.uma.informatica.sii.helloworld.entities.ListaCompra;
 import es.uma.informatica.sii.helloworld.repositories.ItemRepository;
 import es.uma.informatica.sii.helloworld.repositories.ListaCompraRepository;
 
-
-
 @Service
 @Transactional
 public class ListaCompraDBService {
@@ -33,19 +31,22 @@ public class ListaCompraDBService {
 	}
 
 	public List<Long> todasListascompras() {
-		return StreamSupport.stream(listaRepository.findAll().spliterator(),false)
-				.map(ListaCompra::getId).toList();
+		return listaRepository.findAll()
+				.stream()
+				.map(ListaCompra::getId)
+				.toList();		
 	}
 
 	public Long aniadirListaCompra(ListaCompra lc) {
+		lc.setId(null);
 		listaRepository.save(lc);
 		return lc.getId();
 	}
 
 	public void modificarListaCompra(ListaCompra lista) {
 		if (listaRepository.existsById(lista.getId())) {
-			listaRepository.findById(lista.getId())
-			.ifPresent(l->l.setNombre(lista.getNombre()));
+			Optional<ListaCompra> listaCompra = listaRepository.findById(lista.getId());
+			listaCompra.ifPresent(l->l.setNombre(lista.getNombre()));
 		} else {
 			throw new NoEncontradoException();
 		}
@@ -60,15 +61,15 @@ public class ListaCompraDBService {
 	}
 
 	public Long aniadirItem(Long idLista, Item item) {
-		var lista = listaRepository.findById(idLista);
+		Optional<ListaCompra> lista = listaRepository.findById(idLista);
 		if (lista.isPresent()) {
+			item.setId(null);
 			item = itemRepository.save(item);
-
 			ListaCompra lc = lista.get();
 			lc.getItems().add(item);
 			return item.getId();			
 		} else {
-			return null;
+			throw new NoEncontradoException();
 		}
 	}
 
